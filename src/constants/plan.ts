@@ -49,6 +49,40 @@ const CHIA: SeedItem = {
   kcal: 40, protein_g: 1.3, carbs_g: 3.4, fat_g: 2.5,
 };
 
+// --- Items taken straight off the pack -------------------------------------
+// Read from the printed nutrition panels rather than estimated, so these are the
+// numbers to trust. Anything below without a comment had no label to work from.
+
+/**
+ * Pack: 241 kcal · 12.8 g P · 41.9 g C · 2.4 g F per 100 g.
+ * A 200 g loaf is 8 slices, so one slice is 25 g — 4 slices is exactly the per-100 g
+ * column, and 2 slices is the pack's own 50 g serving.
+ */
+const BREAD_4: SeedItem = {
+  name: "CD 2X Protein Wheat Bread",
+  portion: "4 slices (100 g)",
+  kcal: 241, protein_g: 12.8, carbs_g: 41.9, fat_g: 2.4,
+};
+const BREAD_2: SeedItem = {
+  name: "CD 2X Protein Wheat Bread",
+  portion: "2 slices (50 g)",
+  kcal: 121, protein_g: 6.4, carbs_g: 21, fat_g: 1.2,
+};
+
+/** Pack: 171 kcal · 11.2 g P · 27.4 g C · 0.4 g F per 100 g of uncooked batter. */
+const BATTER: SeedItem = {
+  name: "CD 2X Protein Idli Dosa Batter",
+  portion: "112 g uncooked, made as dosa",
+  kcal: 192, protein_g: 12.5, carbs_g: 30.7, fat_g: 0.4,
+};
+
+/** Pack: 112.6 kcal · 24 g P · 2.5 g C · 0.7 g F per 33.3 g scoop. */
+const WHEY: SeedItem = {
+  name: "MyFitFuel Whey 80 — Milk Masala",
+  portion: "1 scoop (33.3 g)",
+  kcal: 113, protein_g: 24, carbs_g: 2.5, fat_g: 0.7,
+};
+
 export const SEED_MEALS: SeedMeal[] = [
   {
     name: "Breakfast",
@@ -56,7 +90,7 @@ export const SEED_MEALS: SeedMeal[] = [
     items: [
       CHIA,
       { name: "Country Delight 2X Protein Milk", portion: "450 ml", kcal: 270, protein_g: 25, carbs_g: 22, fat_g: 9 },
-      { name: "CD 2X Protein Wheat Bread", portion: "4 slices", kcal: 332, protein_g: 25, carbs_g: 48, fat_g: 4.5 },
+      BREAD_4,
     ],
   },
   {
@@ -65,8 +99,8 @@ export const SEED_MEALS: SeedMeal[] = [
     items: [
       CHIA,
       { name: "Whole eggs", portion: "2", kcal: 144, protein_g: 12, carbs_g: 1, fat_g: 10 },
-      { name: "CD 2X Protein Wheat Bread", portion: "2 slices", kcal: 166, protein_g: 12, carbs_g: 24, fat_g: 2.2 },
-      { name: "CD 2X Protein Idli Dosa Batter", portion: "112 g, cooked as dosa", kcal: 170, protein_g: 12, carbs_g: 26, fat_g: 1.5 },
+      BREAD_2,
+      BATTER,
       { name: "Cooking fat", portion: "~4.5 tsp oil / butter", kcal: 180, protein_g: 0, carbs_g: 0, fat_g: 20 },
     ],
   },
@@ -82,7 +116,7 @@ export const SEED_MEALS: SeedMeal[] = [
     name: "Post-workout",
     time_label: "8:00 PM",
     items: [
-      { name: "MyFitFuel Whey — Masala Milk", portion: "1 scoop (33 g)", kcal: 120, protein_g: 24, carbs_g: 1.5, fat_g: 1.5 },
+      WHEY,
       { name: "Roasted chana", portion: "~25 g", kcal: 100, protein_g: 6, carbs_g: 10.5, fat_g: 1.5 },
     ],
   },
@@ -92,8 +126,8 @@ export const SEED_MEALS: SeedMeal[] = [
     items: [
       CHIA,
       { name: "Whole eggs", portion: "3", kcal: 216, protein_g: 18, carbs_g: 1.5, fat_g: 15 },
-      { name: "CD 2X Protein Wheat Bread", portion: "2 slices", kcal: 166, protein_g: 12, carbs_g: 24, fat_g: 2.2 },
-      { name: "CD 2X Protein Idli Dosa Batter", portion: "112 g, cooked as dosa", kcal: 170, protein_g: 12, carbs_g: 26, fat_g: 1.5 },
+      BREAD_2,
+      BATTER,
       { name: "Cooking fat", portion: "~4.5 tsp oil / butter", kcal: 180, protein_g: 0, carbs_g: 0, fat_g: 20 },
     ],
   },
