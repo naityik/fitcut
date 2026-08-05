@@ -7,9 +7,7 @@ import type { ISODate } from "@/lib/date";
 
 export const workoutKeys = {
   library: (userId: string) => ["exercises", userId] as const,
-  day: (date: ISODate, split: Split | null) => ["workout", date, split] as const,
-  /** Prefix covering every split's query for a day. */
-  allForDay: (date: ISODate) => ["workout", date] as const,
+  day: (date: ISODate) => ["workout", date] as const,
   history: (exerciseId: string, before: ISODate) => ["exercise-history", exerciseId, before] as const,
 };
 
@@ -130,22 +128,19 @@ interface WorkoutDayData {
 }
 
 /**
- * A day can hold one session per split — the schema allows push and legs on the same
- * date. `selectedSplit` says which of them is on screen; without one, the most recent
- * session of that day is loaded so re-opening the page resumes where you left off.
+ * One session per day, whose split you can change.
+ *
+ * The schema permits a row per split per day, but that is not how the day is worked:
+ * picking Legs after Pull means "today is legs", not "today is a second session". Read
+ * and write therefore both address a single row — the one most recently touched.
  */
-export function useWorkoutDay(date: ISODate, selectedSplit: Split | null = null) {
+export function useWorkoutDay(date: ISODate) {
   const { user } = useAuth();
   const qc = useQueryClient();
-  const key = workoutKeys.day(date, selectedSplit);
-  /**
-   * Invalidate every split's query for the day, not just the one on screen. Switching
-   * split changes the query key in the same tick that startWorkout fires, so a mutation
-   * created under the previous key would otherwise refresh a query nobody is watching
-   * and leave the new one holding its first, pre-insert result.
-   */
+  const key = workoutKeys.day(date);
+
   const invalidate = () => {
-    qc.invalidateQueries({ queryKey: workoutKeys.allForDay(date) });
+    qc.invalidateQueries({ queryKey: key });
     // "Last time you did this lift" is derived from logged sets, so it goes stale the
     // moment one is edited.
     qc.invalidateQueries({ queryKey: ["exercise-history"] });
@@ -154,10 +149,11 @@ export function useWorkoutDay(date: ISODate, selectedSplit: Split | null = null)
   const query = useQuery({
     queryKey: key,
     queryFn: async (): Promise<WorkoutDayData> => {
-      const forDate = supabase.from("workouts").select("*").eq("log_date", date);
-      const { data: workout, error } = selectedSplit
-        ? await forDate.eq("split", selectedSplit).limit(1).maybeSingle()
-        : await forDate.order("created_at", { ascending: false }).limit(1).maybeSingle();
+      const { data: workout, error } = await supabase
+        .from("workouts").select("*")
+        .eq("log_date", date)
+        .order("updated_at", { ascending: false })
+        .limit(1).maybeSingle();
       if (error) throw new Error(error.message);
       if (!workout) return { workout: null, logged: [] };
 
@@ -192,21 +188,44 @@ export function useWorkoutDay(date: ISODate, selectedSplit: Split | null = null)
   /**
    * Splits are always chosen by hand — never inferred from the day of week.
    *
-   * Deliberately a read-then-insert rather than an upsert. An upsert's `onConflict`
-   * needs a matching unique constraint to exist, and `create table if not exists` never
-   * adds one to a table created by an earlier version of schema.sql — so on a database
-   * seeded before that constraint landed, every split write fails with "no unique or
-   * exclusion constraint matching the ON CONFLICT specification", on every date, while
-   * reads carry on working. This depends on no constraint at all.
+   * Changing the split re-labels the day's existing session rather than starting another
+   * one, which is what made the control appear to snap back: a second row was written,
+   * and the read kept returning the first. Order matters below — a row already carrying
+   * the target split is reused before any row is re-labelled, so this can never collide
+   * with unique (user_id, log_date, split) where that constraint exists.
+   *
+   * `updated_at` is set explicitly rather than left to the touch trigger, since the read
+   * orders by it and a database missing that trigger would otherwise keep resolving to
+   * the wrong row.
    */
   const startWorkout = useMutation({
     mutationFn: async (split: Split) => {
-      const { data: existing, error: findErr } = await supabase
+      const touch = { split, updated_at: new Date().toISOString() };
+
+      const { data: sameSplit, error: sameErr } = await supabase
         .from("workouts").select("*")
         .eq("log_date", date).eq("split", split)
         .limit(1).maybeSingle();
-      if (findErr) throw new Error(findErr.message);
-      if (existing) return existing as WorkoutRow;
+      if (sameErr) throw new Error(sameErr.message);
+      if (sameSplit) {
+        const { data, error } = await supabase
+          .from("workouts").update(touch).eq("id", sameSplit.id).select().single();
+        if (error) throw new Error(error.message);
+        return data as WorkoutRow;
+      }
+
+      const { data: anySession, error: anyErr } = await supabase
+        .from("workouts").select("*")
+        .eq("log_date", date)
+        .order("updated_at", { ascending: false })
+        .limit(1).maybeSingle();
+      if (anyErr) throw new Error(anyErr.message);
+      if (anySession) {
+        const { data, error } = await supabase
+          .from("workouts").update(touch).eq("id", anySession.id).select().single();
+        if (error) throw new Error(error.message);
+        return data as WorkoutRow;
+      }
 
       const { data, error } = await supabase
         .from("workouts")

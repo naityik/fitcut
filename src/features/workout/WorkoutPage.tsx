@@ -23,8 +23,15 @@ export function WorkoutPage() {
   const [picked, setPicked] = React.useState<Split | null>(null);
   React.useEffect(() => setPicked(null), [date]);
 
-  const day = useWorkoutDay(date, picked);
-  const split = picked ?? day.workout?.split ?? null;
+  const day = useWorkoutDay(date);
+
+  /**
+   * What is stored wins once the write has settled. Showing the tapped value while a
+   * save is still in flight keeps the control responsive, but letting it win afterwards
+   * is what let the UI claim "legs" while the database still said "pull".
+   */
+  const saved = day.workout?.split ?? null;
+  const split = day.startWorkout.isPending ? (picked ?? saved) : (saved ?? picked);
   const added = new Set(day.logged.map((l) => l.exercise_id));
 
   const totalSets = day.logged.reduce(
@@ -64,15 +71,10 @@ export function WorkoutPage() {
           {day.startWorkout.isPending && (
             <p className="mt-2.5 text-[12px] text-muted">Saving…</p>
           )}
-          {split && !day.startWorkout.isPending && !day.startWorkout.isError && day.workout && (
+          {saved && !day.startWorkout.isPending && !day.startWorkout.isError && (
             <p className="mt-2.5 text-[12px] text-muted">
-              Saved · session id ends {day.workout.id.slice(-6)}
-            </p>
-          )}
-          {split && !day.startWorkout.isPending && !day.startWorkout.isError && !day.workout && !day.isLoading && (
-            <p className="mt-2.5 rounded-xl bg-cardio/8 px-3 py-2.5 text-[12px] leading-relaxed text-cardio">
-              The write reported success but no session came back for {split} on this date.
-              That points at a read, not a write.
+              Saved as <span className="font-semibold capitalize text-ink">{saved}</span> for this
+              day. Changing it re-labels this session rather than starting a second one.
             </p>
           )}
         </CardBody>
