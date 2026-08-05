@@ -1,0 +1,74 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --paper: 210 20% 96%;
+    --surface: 0 0% 100%;
+    --sunken: 210 24% 98%;
+    --ink: 210 30% 7%;
+    --muted: 213 10% 45%;
+    --faint: 213 12% 62%;
+    --line: 210 18% 90%;
+
+    --jade: 168 80% 27%;
+    --jade-soft: 168 55% 94%;
+    --protein: 251 70% 62%;
+    --carbs: 32 72% 50%;
+    --fat: 10 48% 54%;
+    --cardio: 32 82% 50%;
+    --progress: 162 74% 37%;
+    --plateau: 5 65% 47%;
+  }
+
+  * {
+    @apply border-line;
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-paper text-ink font-sans antialiased;
+    font-feature-settings: "cv05" 1, "ss03" 1;
+    overscroll-behavior-y: none;
+  }
+
+  /* Numbers are the product. Keep them from jittering as they animate. */
+  .tnum {
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.01em;
+  }
+
+  :focus-visible {
+    @apply outline-none ring-2 ring-jade ring-offset-2 ring-offset-paper;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+@layer components {
+  /* The one place glass is used: floating chrome that sits over scrolling content. */
+  .glass {
+    background: hsl(var(--surface) / 0.78);
+    backdrop-filter: saturate(180%) blur(20px);
+    -webkit-backdrop-filter: saturate(180%) blur(20px);
+  }
+
+  .eyebrow {
+    @apply font-display text-[10px] font-bold uppercase tracking-[0.14em] text-faint;
+  }
+
+  .safe-bottom {
+    padding-bottom: calc(env(safe-area-inset-bottom, 0px));
+  }
+}

@@ -1,0 +1,17 @@
+# Dependencies
+node_modules
+
+# Build output
+dist
+tsconfig.tsbuildinfo
+
+# Local secrets — every .env variant stays out, the template stays in.
+# VITE_* values are baked into the bundle at build time, so treat them as public,
+# but the file itself is still never committed.
+.env
+.env.*
+!.env.example
+
+# Editor / OS
+.DS_Store
+.vercel
