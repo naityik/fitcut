@@ -21,13 +21,16 @@ export function useExerciseLibrary() {
   const qc = useQueryClient();
   const key = workoutKeys.library(user!.id);
 
+  /**
+   * Fetches archived rows too, so Settings can show what was removed and put it back.
+   * Everything else reads `exercises`, which is the live list only.
+   */
   const query = useQuery({
     queryKey: key,
     staleTime: 5 * 60_000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("exercises").select("*")
-        .eq("archived", false)
         .order("split").order("sort_order");
       if (error) throw new Error(error.message);
       return (data ?? []) as ExerciseRow[];
@@ -78,13 +81,43 @@ export function useExerciseLibrary() {
     onSuccess: () => qc.invalidateQueries({ queryKey: key }),
   });
 
+  const restoreExercise = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("exercises").update({ archived: false }).eq("id", id);
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: key }),
+  });
+
+  /**
+   * Clears the library in one go — for replacing the seeded starter list with your own.
+   * Archives rather than deletes, so it is undoable from the archived list and no logged
+   * set loses the row it points at.
+   */
+  const clearLibrary = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase
+        .from("exercises")
+        .update({ archived: true })
+        .eq("user_id", user!.id)
+        .eq("archived", false);
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: key }),
+  });
+
+  const all = query.data ?? [];
+
   return {
-    exercises: query.data ?? [],
+    exercises: all.filter((e) => !e.archived),
+    archivedExercises: all.filter((e) => e.archived),
     isLoading: query.isPending,
     createExercise,
     promoteExercise,
     updateExercise,
     archiveExercise,
+    restoreExercise,
+    clearLibrary,
   };
 }
 
@@ -111,7 +144,12 @@ export function useWorkoutDay(date: ISODate, selectedSplit: Split | null = null)
    * created under the previous key would otherwise refresh a query nobody is watching
    * and leave the new one holding its first, pre-insert result.
    */
-  const invalidate = () => qc.invalidateQueries({ queryKey: workoutKeys.allForDay(date) });
+  const invalidate = () => {
+    qc.invalidateQueries({ queryKey: workoutKeys.allForDay(date) });
+    // "Last time you did this lift" is derived from logged sets, so it goes stale the
+    // moment one is edited.
+    qc.invalidateQueries({ queryKey: ["exercise-history"] });
+  };
 
   const query = useQuery({
     queryKey: key,
