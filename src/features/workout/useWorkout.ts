@@ -189,15 +189,28 @@ export function useWorkoutDay(date: ISODate, selectedSplit: Split | null = null)
     },
   });
 
-  /** Splits are always chosen by hand — never inferred from the day of week. */
+  /**
+   * Splits are always chosen by hand — never inferred from the day of week.
+   *
+   * Deliberately a read-then-insert rather than an upsert. An upsert's `onConflict`
+   * needs a matching unique constraint to exist, and `create table if not exists` never
+   * adds one to a table created by an earlier version of schema.sql — so on a database
+   * seeded before that constraint landed, every split write fails with "no unique or
+   * exclusion constraint matching the ON CONFLICT specification", on every date, while
+   * reads carry on working. This depends on no constraint at all.
+   */
   const startWorkout = useMutation({
     mutationFn: async (split: Split) => {
+      const { data: existing, error: findErr } = await supabase
+        .from("workouts").select("*")
+        .eq("log_date", date).eq("split", split)
+        .limit(1).maybeSingle();
+      if (findErr) throw new Error(findErr.message);
+      if (existing) return existing as WorkoutRow;
+
       const { data, error } = await supabase
         .from("workouts")
-        .upsert(
-          { user_id: user!.id, log_date: date, split },
-          { onConflict: "user_id,log_date,split" },
-        )
+        .insert({ user_id: user!.id, log_date: date, split })
         .select().single();
       if (error) throw new Error(error.message);
       return data as WorkoutRow;

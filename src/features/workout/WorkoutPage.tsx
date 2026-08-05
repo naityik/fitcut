@@ -47,6 +47,34 @@ export function WorkoutPage() {
             }}
             options={SPLITS.map((s) => ({ value: s.value as Split, label: s.label, sublabel: s.blurb }))}
           />
+
+          {/*
+            Choosing a split is the one action the whole page depends on, so its outcome
+            is stated here rather than left to a toast that scrolls away. A failure keeps
+            its message on screen until the next attempt.
+          */}
+          {day.startWorkout.isError && (
+            <p className="mt-2.5 rounded-xl bg-plateau/8 px-3 py-2.5 text-[12px] leading-relaxed text-plateau">
+              Couldn't save this split:{" "}
+              {day.startWorkout.error instanceof Error
+                ? day.startWorkout.error.message
+                : "unknown error"}
+            </p>
+          )}
+          {day.startWorkout.isPending && (
+            <p className="mt-2.5 text-[12px] text-muted">Saving…</p>
+          )}
+          {split && !day.startWorkout.isPending && !day.startWorkout.isError && day.workout && (
+            <p className="mt-2.5 text-[12px] text-muted">
+              Saved · session id ends {day.workout.id.slice(-6)}
+            </p>
+          )}
+          {split && !day.startWorkout.isPending && !day.startWorkout.isError && !day.workout && !day.isLoading && (
+            <p className="mt-2.5 rounded-xl bg-cardio/8 px-3 py-2.5 text-[12px] leading-relaxed text-cardio">
+              The write reported success but no session came back for {split} on this date.
+              That points at a read, not a write.
+            </p>
+          )}
         </CardBody>
       </Card>
 
