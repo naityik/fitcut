@@ -11,6 +11,7 @@ import { MacroBar, ProgressRing } from "@/components/charts/ProgressRing";
 import { DateBar } from "@/components/layout/DateBar";
 import { LadderRail } from "@/features/plan/LadderRail";
 import { usePhase } from "@/features/plan/PhaseProvider";
+import { useAcceptStep } from "@/features/plan/useSteps";
 import { useFoodDay } from "@/features/food/useFoodDay";
 import { useWeights } from "@/features/weight/useWeight";
 import { useWorkoutDay } from "@/features/workout/useWorkout";
@@ -27,6 +28,7 @@ export function DashboardPage() {
   const food = useFoodDay(date);
   const weights = useWeights();
   const workout = useWorkoutDay(date);
+  const acceptStep = useAcceptStep();
 
   const kcalLeft = target.kcal - food.eaten.kcal;
   const proteinLeft = phase.protein_target_g - food.eaten.protein;
@@ -140,6 +142,17 @@ export function DashboardPage() {
               </motion.li>
             ))}
           </ul>
+
+          {/* The recommendation only becomes real once it is written as a step. */}
+          {weights.recommendation.shouldStep && weights.recommendation.rung && (
+            <Button
+              variant="accent" size="lg" className="mt-3.5 w-full"
+              disabled={acceptStep.isPending}
+              onClick={() => acceptStep.mutate(weights.recommendation.rung!)}
+            >
+              Take this rung from today
+            </Button>
+          )}
 
           <p className="mt-3.5 flex items-start gap-2 rounded-xl bg-sunken px-3 py-2.5 text-[12px] leading-relaxed text-muted">
             <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-faint" />
