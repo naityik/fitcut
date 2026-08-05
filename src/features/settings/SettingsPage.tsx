@@ -1,6 +1,6 @@
 import * as React from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Check, LogOut, Star } from "lucide-react";
+import { Check, LogOut, Plus, Star } from "lucide-react";
 import { Card, CardBody, SectionLabel } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/input";
@@ -9,8 +9,10 @@ import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { usePhase, phaseKeys } from "@/features/plan/PhaseProvider";
 import { useExerciseLibrary } from "@/features/workout/useWorkout";
+import { ExerciseDialog } from "@/features/workout/ExerciseDialog";
+import { SPLITS } from "@/constants/exercises";
 import { fmtDayLong } from "@/lib/date";
-import type { PhaseRow, Unit } from "@/types/database";
+import type { ExerciseRow, PhaseRow, Unit } from "@/types/database";
 
 export function SettingsPage() {
   const { user, signOut } = useAuth();
@@ -141,13 +143,28 @@ export function SettingsPage() {
 }
 
 function ExerciseLibrarySettings() {
-  const { exercises, promoteExercise, updateExercise } = useExerciseLibrary();
+  const { exercises, promoteExercise, updateExercise, createExercise, archiveExercise } =
+    useExerciseLibrary();
+  const [dialogOpen, setDialogOpen] = React.useState(false);
+  const [editing, setEditing] = React.useState<ExerciseRow | null>(null);
+
   const trials = exercises.filter((e) => !e.is_permanent);
+
+  const openNew = () => { setEditing(null); setDialogOpen(true); };
+  const openEdit = (ex: ExerciseRow) => { setEditing(ex); setDialogOpen(true); };
 
   return (
     <Card className="mt-3">
       <CardBody>
-        <SectionLabel>Exercise library</SectionLabel>
+        <div className="flex items-center justify-between">
+          <SectionLabel className="mb-0">Exercise library</SectionLabel>
+          <Button size="sm" variant="secondary" onClick={openNew}>
+            <Plus className="h-3.5 w-3.5" /> New
+          </Button>
+        </div>
+        <p className="mb-3 mt-1.5 text-[12px] text-muted">
+          Whatever is in here is what the workout picker offers, grouped by split.
+        </p>
 
         {trials.length > 0 && (
           <div className="mb-4 rounded-xl bg-cardio/6 p-3">
@@ -167,29 +184,53 @@ function ExerciseLibrarySettings() {
           </div>
         )}
 
-        <ul className="max-h-[340px] space-y-1 overflow-y-auto">
-          {exercises.map((ex) => (
-            <li key={ex.id} className="flex items-center gap-3 rounded-xl px-1 py-1.5">
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-[13px] font-medium">{ex.name}</span>
-                <span className="block truncate text-[11px] text-faint capitalize">
-                  {ex.split} · {ex.muscle_group ?? "—"}
-                </span>
-              </span>
-              <Segmented
-                className="w-[132px] p-1"
-                value={ex.unit}
-                onChange={(unit) => updateExercise.mutate({ id: ex.id, patch: { unit: unit as Unit } })}
-                options={[{ value: "kg" as Unit, label: "kg" }, { value: "lb" as Unit, label: "lb" }]}
-              />
-            </li>
-          ))}
-        </ul>
+        <div className="max-h-[420px] space-y-3 overflow-y-auto">
+          {SPLITS.map((s) => {
+            const forSplit = exercises.filter((e) => e.split === s.value);
+            if (forSplit.length === 0) return null;
+            return (
+              <div key={s.value}>
+                <p className="eyebrow mb-1">{s.label}</p>
+                <ul className="space-y-1">
+                  {forSplit.map((ex) => (
+                    <li key={ex.id} className="flex items-center gap-2 rounded-xl px-1 py-1.5">
+                      <button
+                        onClick={() => openEdit(ex)}
+                        className="min-w-0 flex-1 rounded-lg px-1 py-0.5 text-left transition-colors hover:bg-ink/[0.04]"
+                      >
+                        <span className="block truncate text-[13px] font-medium">{ex.name}</span>
+                        <span className="block truncate text-[11px] text-faint">
+                          {[ex.muscle_group, ex.equipment].filter(Boolean).join(" · ") || "—"}
+                        </span>
+                      </button>
+                      <Segmented
+                        className="w-[112px] shrink-0 p-1"
+                        value={ex.unit}
+                        onChange={(unit) => updateExercise.mutate({ id: ex.id, patch: { unit: unit as Unit } })}
+                        options={[{ value: "kg" as Unit, label: "kg" }, { value: "lb" as Unit, label: "lb" }]}
+                      />
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            );
+          })}
+        </div>
+
         <p className="mt-2.5 text-[12px] text-muted">
-          Unit is fixed per exercise — change it here and every past and future entry displays in
-          that unit. <Badge tone="neutral">No conversion happens</Badge>
+          Tap a name to edit or remove it. Unit is fixed per exercise — change it and every past
+          and future entry displays in that unit. <Badge tone="neutral">No conversion happens</Badge>
         </p>
       </CardBody>
+
+      <ExerciseDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        exercise={editing}
+        onCreate={(input) => createExercise.mutate(input)}
+        onUpdate={(id, patch) => updateExercise.mutate({ id, patch })}
+        onArchive={(id) => archiveExercise.mutate(id)}
+      />
     </Card>
   );
 }

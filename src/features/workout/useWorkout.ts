@@ -7,7 +7,9 @@ import type { ISODate } from "@/lib/date";
 
 export const workoutKeys = {
   library: (userId: string) => ["exercises", userId] as const,
-  day: (date: ISODate) => ["workout", date] as const,
+  day: (date: ISODate, split: Split | null) => ["workout", date, split] as const,
+  /** Prefix covering every split's query for a day. */
+  allForDay: (date: ISODate) => ["workout", date] as const,
   history: (exerciseId: string, before: ISODate) => ["exercise-history", exerciseId, before] as const,
 };
 
@@ -34,7 +36,8 @@ export function useExerciseLibrary() {
 
   const createExercise = useMutation({
     mutationFn: async (input: {
-      name: string; split: Split; unit: Unit; muscle_group?: string; is_permanent: boolean;
+      name: string; split: Split; unit: Unit;
+      muscle_group?: string; equipment?: string; is_permanent: boolean;
     }) => {
       const { data, error } = await supabase
         .from("exercises")
@@ -63,12 +66,25 @@ export function useExerciseLibrary() {
     onSuccess: () => qc.invalidateQueries({ queryKey: key }),
   });
 
+  /**
+   * Archived, never deleted. Sets already logged against this exercise reference the row,
+   * so removing it would take history with it.
+   */
+  const archiveExercise = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("exercises").update({ archived: true }).eq("id", id);
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: key }),
+  });
+
   return {
     exercises: query.data ?? [],
     isLoading: query.isPending,
     createExercise,
     promoteExercise,
     updateExercise,
+    archiveExercise,
   };
 }
 
@@ -80,17 +96,30 @@ interface WorkoutDayData {
   logged: LoggedExercise[];
 }
 
-export function useWorkoutDay(date: ISODate) {
+/**
+ * A day can hold one session per split — the schema allows push and legs on the same
+ * date. `selectedSplit` says which of them is on screen; without one, the most recent
+ * session of that day is loaded so re-opening the page resumes where you left off.
+ */
+export function useWorkoutDay(date: ISODate, selectedSplit: Split | null = null) {
   const { user } = useAuth();
   const qc = useQueryClient();
-  const key = workoutKeys.day(date);
-  const invalidate = () => qc.invalidateQueries({ queryKey: key });
+  const key = workoutKeys.day(date, selectedSplit);
+  /**
+   * Invalidate every split's query for the day, not just the one on screen. Switching
+   * split changes the query key in the same tick that startWorkout fires, so a mutation
+   * created under the previous key would otherwise refresh a query nobody is watching
+   * and leave the new one holding its first, pre-insert result.
+   */
+  const invalidate = () => qc.invalidateQueries({ queryKey: workoutKeys.allForDay(date) });
 
   const query = useQuery({
     queryKey: key,
     queryFn: async (): Promise<WorkoutDayData> => {
-      const { data: workout, error } = await supabase
-        .from("workouts").select("*").eq("log_date", date).order("created_at").limit(1).maybeSingle();
+      const forDate = supabase.from("workouts").select("*").eq("log_date", date);
+      const { data: workout, error } = selectedSplit
+        ? await forDate.eq("split", selectedSplit).limit(1).maybeSingle()
+        : await forDate.order("created_at", { ascending: false }).limit(1).maybeSingle();
       if (error) throw new Error(error.message);
       if (!workout) return { workout: null, logged: [] };
 

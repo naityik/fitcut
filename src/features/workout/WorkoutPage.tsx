@@ -13,10 +13,18 @@ import type { Split } from "@/types/database";
 
 export function WorkoutPage() {
   const { date } = useSelectedDate();
-  const day = useWorkoutDay(date);
   const [pickerOpen, setPickerOpen] = React.useState(false);
 
-  const split = day.workout?.split ?? null;
+  /**
+   * Which session is on screen. Picking a split has to move this, not just write a row:
+   * a day can hold one workout per split, so without it the page would keep re-reading
+   * whichever session was created first and the control would look stuck.
+   */
+  const [picked, setPicked] = React.useState<Split | null>(null);
+  React.useEffect(() => setPicked(null), [date]);
+
+  const day = useWorkoutDay(date, picked);
+  const split = picked ?? day.workout?.split ?? null;
   const added = new Set(day.logged.map((l) => l.exercise_id));
 
   const totalSets = day.logged.reduce(
@@ -33,7 +41,10 @@ export function WorkoutPage() {
           <p className="eyebrow mb-2.5">What are you training?</p>
           <Segmented
             value={split}
-            onChange={(v) => day.startWorkout.mutate(v as Split)}
+            onChange={(v) => {
+              setPicked(v as Split);
+              day.startWorkout.mutate(v as Split);
+            }}
             options={SPLITS.map((s) => ({ value: s.value as Split, label: s.label, sublabel: s.blurb }))}
           />
         </CardBody>
