@@ -50,7 +50,10 @@ interface DayData {
 export function useFoodDay(date: ISODate) {
   const { user } = useAuth();
   const qc = useQueryClient();
+  const { phase } = usePhase();
   const template = useMealTemplate();
+  const invalidateTemplate = () =>
+    qc.invalidateQueries({ queryKey: foodKeys.template(phase.id) });
 
   const day = useQuery({
     queryKey: foodKeys.day(date),
@@ -96,6 +99,27 @@ export function useFoodDay(date: ISODate) {
       if (ctx?.prev) qc.setQueryData(foodKeys.day(date), ctx.prev);
     },
     onSettled: () => qc.invalidateQueries({ queryKey: foodKeys.day(date) }),
+  });
+
+  /**
+   * Edits the plan itself, not one day. The meals stay fixed; what they are worth is
+   * whatever the pack says, and packs get reformulated.
+   */
+  const updateMealItem = useMutation({
+    mutationFn: async ({ id, patch }: { id: string; patch: Partial<MealItemRow> }) => {
+      const { error } = await supabase.from("meal_items").update(patch).eq("id", id);
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: invalidateTemplate,
+  });
+
+  /** Archived, not deleted — the row stays for any day that already ticked it. */
+  const removeMealItem = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("meal_items").update({ archived: true }).eq("id", id);
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: invalidateTemplate,
   });
 
   const addCustomFood = useMutation({
@@ -157,6 +181,8 @@ export function useFoodDay(date: ISODate) {
     planned,
     isLoading: template.isPending || day.isPending,
     toggleItem,
+    updateMealItem,
+    removeMealItem,
     addCustomFood,
     updateCustomFood,
     deleteCustomFood,

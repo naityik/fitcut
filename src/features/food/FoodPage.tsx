@@ -1,18 +1,19 @@
 import * as React from "react";
 import { motion } from "framer-motion";
-import { Check, Plus, Sparkles } from "lucide-react";
+import { Check, Pencil, Plus, Sparkles } from "lucide-react";
 import { Card, CardBody, SectionLabel } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge, Skeleton } from "@/components/ui/primitives";
 import { MacroBar } from "@/components/charts/ProgressRing";
 import { DateBar } from "@/components/layout/DateBar";
 import { CustomFoodDialog } from "./CustomFoodDialog";
+import { MealItemDialog } from "./MealItemDialog";
 import { useFoodDay } from "./useFoodDay";
 import { usePhase } from "@/features/plan/PhaseProvider";
 import { useSelectedDate } from "@/hooks/useSelectedDate";
 import { sumMacros } from "@/lib/nutrition";
 import { cn, fmtInt, pct, round } from "@/lib/utils";
-import type { CustomFoodRow } from "@/types/database";
+import type { CustomFoodRow, MealItemRow } from "@/types/database";
 
 export function FoodPage() {
   const { date } = useSelectedDate();
@@ -21,6 +22,7 @@ export function FoodPage() {
   const food = useFoodDay(date);
   const [dialogOpen, setDialogOpen] = React.useState(false);
   const [editing, setEditing] = React.useState<CustomFoodRow | null>(null);
+  const [editingItem, setEditingItem] = React.useState<MealItemRow | null>(null);
 
   const kcalLeft = target.kcal - food.eaten.kcal;
   const planGap = food.planned.kcal - target.kcal;
@@ -79,10 +81,10 @@ export function FoodPage() {
                 <CardBody className="pt-3">
                   <ul className="space-y-1">
                     {meal.items.map((item) => (
-                      <li key={item.id}>
+                      <li key={item.id} className="flex items-center gap-1">
                         <button
                           onClick={() => food.toggleItem.mutate({ itemId: item.id, checked: !item.checked })}
-                          className="flex w-full items-center gap-3 rounded-xl px-2 py-2 text-left transition-colors hover:bg-ink/[0.03]"
+                          className="flex min-w-0 flex-1 items-center gap-3 rounded-xl px-2 py-2 text-left transition-colors hover:bg-ink/[0.03]"
                         >
                           <motion.span
                             animate={{ scale: item.checked ? [1, 1.18, 1] : 1 }}
@@ -108,6 +110,14 @@ export function FoodPage() {
                             <span className="block text-[13px] font-semibold">{fmtInt(item.kcal)}</span>
                             <span className="block text-[10px] text-faint">{round(item.protein_g, 0)}p</span>
                           </span>
+                        </button>
+
+                        <button
+                          onClick={() => setEditingItem(item)}
+                          aria-label={`Edit ${item.name}`}
+                          className="shrink-0 rounded-lg p-2 text-faint transition-colors hover:bg-ink/[0.05] hover:text-ink"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
                         </button>
                       </li>
                     ))}
@@ -198,6 +208,14 @@ export function FoodPage() {
             : food.addCustomFood.mutate(values)
         }
         onDelete={(id) => food.deleteCustomFood.mutate(id)}
+      />
+
+      <MealItemDialog
+        open={editingItem !== null}
+        onOpenChange={(v) => { if (!v) setEditingItem(null); }}
+        item={editingItem}
+        onSave={(id, patch) => food.updateMealItem.mutate({ id, patch })}
+        onRemove={(id) => food.removeMealItem.mutate(id)}
       />
     </div>
   );
