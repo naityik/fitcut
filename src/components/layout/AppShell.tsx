@@ -1,17 +1,24 @@
 import { NavLink, Outlet } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Activity, Dumbbell, LayoutDashboard, Scale, Settings, UtensilsCrossed } from "lucide-react";
+import {
+  Activity, BookOpen, Dumbbell, LayoutDashboard, Scale, Settings, UtensilsCrossed,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { usePhase } from "@/features/plan/PhaseProvider";
 import { phaseDayNumber, todayISO } from "@/lib/date";
 
+/**
+ * `mobile` marks what earns a slot in the bottom bar. Settings has always lived on the
+ * desktop rail only; Learn belongs on both, since it is a daily object like the others.
+ */
 const NAV = [
-  { to: "/", label: "Today", icon: LayoutDashboard, end: true },
-  { to: "/food", label: "Food", icon: UtensilsCrossed },
-  { to: "/workout", label: "Workout", icon: Dumbbell },
-  { to: "/weight", label: "Weight", icon: Scale },
-  { to: "/analytics", label: "Lifts", icon: Activity },
-  { to: "/settings", label: "Settings", icon: Settings },
+  { to: "/", label: "Today", icon: LayoutDashboard, end: true, mobile: true },
+  { to: "/food", label: "Food", icon: UtensilsCrossed, mobile: true },
+  { to: "/workout", label: "Workout", icon: Dumbbell, mobile: true },
+  { to: "/weight", label: "Weight", icon: Scale, mobile: true },
+  { to: "/analytics", label: "Lifts", icon: Activity, mobile: true },
+  { to: "/learn", label: "Learn", icon: BookOpen, mobile: true },
+  { to: "/settings", label: "Settings", icon: Settings, mobile: false },
 ];
 
 export function AppShell() {
@@ -67,14 +74,14 @@ export function AppShell() {
 
       {/* Mobile tab bar */}
       <nav className="glass safe-bottom fixed inset-x-0 bottom-0 z-30 flex border-t border-line lg:hidden">
-        {NAV.slice(0, 5).map(({ to, label, icon: Icon, end }) => (
+        {NAV.filter((n) => n.mobile).map(({ to, label, icon: Icon, end }) => (
           <NavLink
             key={to}
             to={to}
             end={end}
             className={({ isActive }) =>
               cn(
-                "relative flex flex-1 flex-col items-center gap-1 py-2.5 text-[10px] font-semibold transition-colors",
+                "relative flex min-w-0 flex-1 flex-col items-center gap-1 py-2.5 text-[10px] font-semibold transition-colors",
                 isActive ? "text-jade" : "text-faint",
               )
             }
