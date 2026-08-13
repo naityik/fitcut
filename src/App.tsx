@@ -9,6 +9,7 @@ import { WorkoutPage } from "@/features/workout/WorkoutPage";
 import { AnalyticsPage } from "@/features/workout/AnalyticsPage";
 import { WeightPage } from "@/features/weight/WeightPage";
 import { LearnPage } from "@/features/learn/LearnPage";
+import { TrackerPage } from "@/features/tracker/TrackerPage";
 import { SettingsPage } from "@/features/settings/SettingsPage";
 import { Skeleton } from "@/components/ui/primitives";
 
@@ -28,6 +29,7 @@ export default function App() {
           <Route path="weight" element={<WeightPage />} />
           <Route path="analytics" element={<AnalyticsPage />} />
           <Route path="learn" element={<LearnPage />} />
+          <Route path="tracker" element={<TrackerPage />} />
           <Route path="settings" element={<SettingsPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
