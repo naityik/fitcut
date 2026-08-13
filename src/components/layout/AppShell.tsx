@@ -1,16 +1,19 @@
 import { NavLink, Outlet } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
-  Activity, BookOpen, CalendarRange, Dumbbell, LayoutDashboard, Scale, Settings,
-  UtensilsCrossed,
+  Activity, CalendarRange, Dumbbell, LayoutDashboard, Scale, Settings, UtensilsCrossed,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { usePhase } from "@/features/plan/PhaseProvider";
 import { phaseDayNumber, todayISO } from "@/lib/date";
 
 /**
- * `mobile` marks what earns a slot in the bottom bar. Settings has always lived on the
- * desktop rail only; Learn belongs on both, since it is a daily object like the others.
+ * `mobile` marks what earns a slot in the bottom bar; Settings lives on the desktop rail
+ * only.
+ *
+ * /learn and /timeline are deliberately absent from both. They are reference pages rather
+ * than daily logging, reached by typing the URL — the routes exist in App.tsx and work
+ * normally, they just do not take a nav slot.
  */
 const NAV = [
   { to: "/", label: "Today", icon: LayoutDashboard, end: true, mobile: true },
@@ -18,7 +21,6 @@ const NAV = [
   { to: "/workout", label: "Workout", icon: Dumbbell, mobile: true },
   { to: "/weight", label: "Weight", icon: Scale, mobile: true },
   { to: "/analytics", label: "Lifts", icon: Activity, mobile: true },
-  { to: "/learn", label: "Learn", icon: BookOpen, mobile: true },
   { to: "/tracker", label: "Tracker", icon: CalendarRange, mobile: true },
   { to: "/settings", label: "Settings", icon: Settings, mobile: false },
 ];
@@ -83,9 +85,9 @@ export function AppShell() {
             end={end}
             className={({ isActive }) =>
               cn(
-                // Seven tabs at 375px leaves ~53px each, so the label truncates rather
-                // than wrapping and pushing the bar taller than the icons.
-                "relative flex min-w-0 flex-1 flex-col items-center gap-1 px-0.5 py-2.5 text-[9.5px] font-semibold transition-colors",
+                // Labels truncate rather than wrap, so adding a tab can never push the
+                // bar taller than its icons.
+                "relative flex min-w-0 flex-1 flex-col items-center gap-1 px-0.5 py-2.5 text-[10px] font-semibold transition-colors",
                 isActive ? "text-jade" : "text-faint",
               )
             }
@@ -99,7 +101,7 @@ export function AppShell() {
                     transition={{ type: "spring", stiffness: 480, damping: 38 }}
                   />
                 )}
-                <Icon className="h-[20px] w-[20px] shrink-0" strokeWidth={isActive ? 2.4 : 2} />
+                <Icon className="h-[21px] w-[21px] shrink-0" strokeWidth={isActive ? 2.4 : 2} />
                 <span className="w-full truncate text-center">{label}</span>
               </>
             )}
